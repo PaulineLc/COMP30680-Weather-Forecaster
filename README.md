@@ -23,9 +23,7 @@ Error handling
 There are 5 error handlers:
 
 1. if the API is not available (return code 4** or 5**): an error message appears explaining that the 'weather-forecasting frogs' are sleeping and prompt the user to try again later. An error in thrown to explain that the API is unavailable.
-
 2. Autocomplete is unabled on the form to make it easier for the user to pick a valid location. This is using the Google Map Autocomplete API.
-
 3. if the user enters no location or an incorrect location then an error message appears explaining that the 'weather-forecasting frogs couldn't understand the request' and prompt the user to enter an incorrect location
 4. if the website is load with an HTTPS protocol, an error message appears to explain that the website cannot support HTTPS. The error message explains how to use the website, and an additional web page explains why the website doesn't work with HTTPS.
 5. a function checks that there is actually a rain element in the JSON (it is sometimes missing - e.g. if there is no rain) and handles the showing of the rain accordingly.
