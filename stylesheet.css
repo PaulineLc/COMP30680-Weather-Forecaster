@@ -1,0 +1,214 @@
+/*main*/
+
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background-color: #191919;
+    font-family: 'Open Sans';
+}
+
+/*First page*/
+
+#form {
+    
+    display: block;
+    background: url('images/sky.png') center center fixed no-repeat;
+    background-size: cover;
+    margin: 0;
+	padding: 0;
+	border: 0;
+	font-size: 100%;
+	font: inherit;
+	vertical-align: baseline;
+    min-height: 100%;
+    text-align: center;
+    line-height: 3em;
+}
+
+#form input[type='text'] {
+    width: 33%;
+    padding: 12px 20px;
+    margin: 12px 0;
+    border: none;
+    border-radius: 4px;
+    box-sizing: border-box;
+    background-color: rgba(255,255,255,0.6);
+    font-size: 16px;
+    font-family: "Oxygen Mono";
+}
+
+#submitButton { /*CSS adapted from my previous assignment (homework 1)*/
+    background-color: rgba(0,0,0,0.6);
+    color: white;
+    padding: 14px 20px;
+    margin: 8px 0;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    width: auto;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    font-family: "Open Sans";
+    font-size: 20px;
+}
+
+#submitButton:hover {
+    background-color: rgba(0,0,0,0.8);
+}
+
+/*weather page*/
+
+.icon {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+h1 {
+    font-family: 'Alegreya Sans SC';
+    color: #D9853B;
+}
+
+#global-weather-container {
+    height: 100%;
+    width: 100%;
+    text-align: center;
+    font-size: 1vw;
+    display: none;
+}
+
+#forecast {
+    height: 100%;
+    width: 75%;
+    margin-left: auto;
+    margin-right: auto;
+    background-color: #ECECEA;
+    color: black;
+}
+
+#page-top {
+    overflow: hidden;
+    height: 15%;
+}
+
+#basic-info {
+    height: 100%;
+    float: left;
+    width: 50%;
+    overflow: hidden;
+}
+
+#options {
+    height: 100%;
+    font-size: 1vw;
+    width: 50%;
+    overflow: hidden;
+    text-align: left;
+}
+
+#option-1 {
+    width: 50%;
+    float: left;
+    text-align: left;
+}
+
+#option-2 {
+    width: 50%;
+    overflow: hidden;
+}
+
+#option-2 {
+    
+}
+
+#page-main {
+    width: 100%;
+    height: 65%;
+}
+
+#map {
+    height: 100%;
+    width: 50%;
+    float: left;
+}
+
+#weather-main {
+    text-indent: 1em;
+    text-align: left;
+    height: 100%;
+    width: 50%;
+    overflow: auto;
+    font-size: 1.2vw;
+}
+
+#weather-main img {
+    display: inline;
+}
+
+#day-list {
+    width: 100%;
+    height: 10%;
+    display: block;
+    text-align: center;
+}
+
+#hourly-weather {
+    width: 100%;
+    height: 10%
+}
+
+.forecast-main {
+    color: white;
+    background-color: #558C89;
+    color: black;
+}
+
+.forecast-detail {
+    color: black;
+    background-color: #abcfcd;
+    border: 5px solid #74AFAD;
+    margin: auto;
+}
+
+.forecast-main, .forecast-detail {
+    display: inline-block;
+    vertical-align: top;
+    position: relative;
+    max-height: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.forecast-main:hover, .forecast-detail:hover {
+    cursor: pointer;
+}
+
+.forecast-detail:hover {
+    background-color: #d5e7e6;
+}
+
+.pressure, .humidity, .windspeed {
+    display: none;
+}
+
+.dateText {
+    font-weight: bold;
+}
+
+/*HTTPS error*/
+#https{
+    padding: 5%;
+    text-align: justify;
+    color: white;
+    
+}
+
+#https a {
+    color: lightgrey;
+}
+
+#https a:hover {
+    color: lightcyan;
+}

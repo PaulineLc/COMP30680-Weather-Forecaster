@@ -1,0 +1,553 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+    <link rel="stylesheet" type="text/css" href="stylesheet.css">
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Open+Sans">
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Alegreya+Sans+SC">
+    <title>Your favorite weather forecaster</title>
+</head>
+
+<body>
+    <div id="form">
+        <form onkeypress="return event.keyCode != 13;">
+            Location (e.g. Dublin, Ireland):<br>
+            <input id="autocomplete" placeholder="Enter a location" type="text" onkeypress="return event.keyCode != 13;"> <!--onkeypress was added so that the form does not submit when hitting enter; http://stackoverflow.com/questions/895171/prevent-users-from-submitting-form-by-hitting-enter-->
+            <br> Units:<br>
+            <input type="radio" name="unit" value="metric" id="metricRadio" checked>
+            <label for="metricRadio">metric</label>
+            <input type="radio" name="unit" value="imperial" id='imperialRadio'>
+            <label for='imperialRadio'>imperial</label><br> Days to be forecast:<br>
+            <select name="days" id="days">
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                    </select><br>
+
+            <button id="submitButton" type="button" onclick="submitRequest()">submit</button>
+        </form>
+    </div>
+    <div id='global-weather-container'>
+        <div id="forecast">
+            <div id='page-top'>
+                <div id='basic-info'></div>
+                <div id="options">
+                    <div id='option-1'><input type="checkbox" name="options" value="weatherSummary" id='show-summary' onclick="showOption(&quot;weather-summary&quot;, &quot;show-summary&quot;)" checked> Weather summary <br>
+                        <input type="checkbox" name="options" value="temperatures" id='show-temperature' onclick="showOption(&quot;temperature&quot;, &quot;show-temperature&quot;)" checked> Temperatures <br>
+                        <input type="checkbox" name="options" value="rain" id='show-rain' onclick="showOption(&quot;rain-prediction&quot;, &quot;show-rain&quot;)" checked>Predicted rainfall</div>
+                    <div id='option-2'>
+                        <input type="checkbox" name="options" value="pressure" onclick="showOption(&quot;pressure&quot;, &quot;show-pressure&quot;)" id='show-pressure'>Pressure<br>
+                        <input type="checkbox" name="options" value="humidity" onclick="showOption(&quot;humidity&quot;, &quot;show-humidity&quot;)" id='show-humidity'>Humidity<br>
+                        <input type="checkbox" name="options" value="windSpeed" id='show-wind' onclick="showOption(&quot;windspeed&quot;, &quot;show-wind&quot;)">Wind speed</div>
+                </div>
+            </div>
+            <div id='page-main'>
+                <div id='map'></div>
+                <div id='weather-main'></div>
+            </div>
+
+            <div id='day-list'></div>
+            <div id='hourly-weather'></div>
+
+        </div>
+    </div>
+
+    <script>
+        //Below code from Google:
+        //https://developers.google.com/maps/documentation/javascript/examples/places-autocomplete-addressform
+        var autocomplete;
+
+        function initAutocomplete() {
+            // Create the autocomplete object, restricting the search to geographical
+            // location types.
+            autocomplete = new google.maps.places.Autocomplete(
+                /** @type {!HTMLInputElement} */
+                (document.getElementById('autocomplete')), {
+                    types: ['geocode']
+                });
+        }
+
+        //function that takes the input from the user and sends the API request to Google Map & Open Weather Map
+        function submitRequest() {
+
+            /*piece of code adapted from lecture 9*/
+
+            //Get location
+            var location = document.getElementById('autocomplete').value;
+            //var location = trimInput(location);
+
+            //Get units
+            var unit = getUnit();
+
+            //Get the number of days to forecast
+            //adapted from: http://stackoverflow.com/questions/1085801/get-selected-value-in-dropdown-list-using-javascript
+            var days = document.getElementById("days");
+            var ForecastRequired = days.options[days.selectedIndex].value;
+
+            //prepare request
+            var openWeatherResponse;
+
+            var xmlhttp = new XMLHttpRequest();
+
+            var url = "http://api.openweathermap.org/data/2.5/forecast?q=" +
+                location +
+                "&units=" + unit +
+                "&APPID=d95836c30dbf671073969e5dd2a72921";
+
+            console.log(url);
+
+            //process request
+            xmlhttp.onreadystatechange = function() {
+                if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+
+                    //send request
+                    var openWeatherResponse = parseJson(xmlhttp.responseText);
+
+                    //hide form
+                    setDisplay("form", "none");
+                    setDisplay("global-weather-container", "block");
+                    //setDisplay('forecast', 'block');
+
+                    //display weather
+                    displayWeather(openWeatherResponse, ForecastRequired);
+
+                    //display map
+                    var lon = openWeatherResponse.city.coord.lon;
+                    var lat = openWeatherResponse.city.coord.lat;
+                    var icon = openWeatherResponse.list[0].weather[0].icon;
+
+                    loadScript(lat, lon, icon);
+                } else if (xmlhttp.status >= 400) {
+                    //error if the API is unavailable
+                    alert("Oops! Our weather-forecasting frogs are currently asleep... Please try again later");
+                    throw new Error("API unavailable")
+                    location.reload();
+                }
+            }
+
+            //Send API request
+            xmlhttp.open("GET", url, true);
+            xmlhttp.send();
+
+        }
+
+        //to display weekdays
+        var weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+        //displays weather list
+        function displayWeather(jsonResponse, ForecastRequired) {
+            var jr = jsonResponse;
+            var myDiv = document.getElementById("day-list");
+
+            document.getElementById('basic-info').innerHTML = "<h1>Showing weather forecast for " +
+                jr.city.name + " (" + jr.city.country + ")</h1><br>";
+
+            //Getting today's date: http://stackoverflow.com/questions/1531093/how-to-get-current-date-in-javascript
+            var today = new Date();
+            var todayDay = today.getDate();
+
+            //Count the number of forecasts. Increment by 1 each time a forecast is displayed
+            var forecastCount = 0;
+
+            //Object used to store the dates
+            var datesObject = {};
+
+            //will display the forecast over the number of days selected by the user
+            for (var i = 0; i < jr.list.length; i++) {
+
+                //timestamp conversion to date:
+                //http://stackoverflow.com/questions/847185/convert-a-unix-timestamp-to-time-in-javascript
+                var unixTimeStamp = jr.list[i].dt;
+                var date = new Date(unixTimeStamp * 1000);
+
+                if (((i == 0) ||
+                    (10 < date.getHours() && date.getHours() <= 13 && todayDay != date.getDate())) &&
+                    forecastCount < ForecastRequired) {
+
+                    datesObject[unixTimeStamp] = date.getDate();
+
+                    //create new div to display the daily weather
+                    var newDiv = document.createElement('div');
+                    newDiv.className = 'forecast-main';
+                    newDiv.id = unixTimeStamp;
+                    myDiv.appendChild(newDiv);
+                    
+                    //create a div to display the date
+                    var dateDiv = document.createElement('div');
+                    dateDiv.className = "dateText";
+                    dateDiv.innerHTML = weekdays[date.getDay()] + "<br/>";
+                    newDiv.appendChild(dateDiv);
+
+                    //display weather summary
+                    createSummary(jr.list[i].weather[0].description, jr.list[i].weather[0].icon, newDiv);
+
+                    showOption('weather-summary', 'show-summary');
+
+                    //set div width
+                    var myElement = document.getElementById(unixTimeStamp)
+                    myElement.style.width = (100 / ForecastRequired) + '%';
+
+                    //add event listeners.
+                    myElement.addEventListener('click', function() {
+                        showDayDetails(jr, datesObject[this.id], 'hourly-weather');
+                    });
+
+                    myElement.addEventListener('click', function() {
+                        changeBackgroundColor(this.id)
+                    });
+
+                   myElement.addEventListener('click', function() {
+                        defineMainWeather(jr, this.id);
+                    });
+
+                    //default display
+                    if (i == 0) {
+                        changeBackgroundColor(unixTimeStamp);
+                        defineMainWeather(jr, unixTimeStamp);
+                        showDayDetails(jr, datesObject[unixTimeStamp], 'hourly-weather');
+                    }
+
+                    forecastCount += 1;
+                }
+            }
+        }
+
+
+        //Display main weather
+        function defineMainWeather(jr, dateRequired, guesshour = true) {
+            
+            //guess hours is used when the user clicks a daily forecast (no specific hours requested)
+            if (guesshour) {
+
+                var today = new Date();
+                dateRequired = new Date(dateRequired * 1000);
+                dateRequired = dateRequired.getDate();
+                
+                for (var index = 0; index < jr.list.length; index++) {
+                    var unixTimeStamp = jr.list[index].dt;
+                    var date = new Date(unixTimeStamp * 1000);
+
+                    if (dateRequired == date.getDate() &&
+                        (index == 0 ||
+                        (date.getHours() > 10 && date.getHours() <= 13 &&
+                                dateRequired != today.getDate()))) {
+                        
+                        formatMainWeather(jr,date,index);
+                        break;
+                    }
+                }
+            } else {
+                for (var index = 0; index < jr.list.length; index++) {
+                    if (jr.list[index].dt == dateRequired) {
+
+                        dateRequired = new Date(dateRequired * 1000);
+                        
+                        formatMainWeather(jr,dateRequired,index);
+                        break;
+                    }
+                }
+            }
+        }
+        
+        //format the main weather display
+        function formatMainWeather(jr, date, index) {
+            
+            var myElement = document.getElementById('weather-main');
+            
+            //remove previous weather information
+            while (myElement.hasChildNodes()) {
+                myElement.removeChild(myElement.lastChild);
+            }
+            
+            //create new weather information
+            var newDiv = document.createElement('div');
+
+            myElement.appendChild(newDiv);
+
+            var dateDiv = document.createElement('div');
+            dateDiv.className = "dateText";
+            dateDiv.innerHTML = date.toDateString() + "<br> <p>" + date.getHours() + ':00</p>';
+
+            newDiv.appendChild(dateDiv);
+            
+            //display weather elements
+            createSummary(jr.list[index].weather[0].description, jr.list[index].weather[0].icon, newDiv);
+
+            createMinTemp(jr.list[index].main.temp_min, newDiv);
+
+            createMaxTemp(jr.list[index].main.temp_max, newDiv);
+
+            createRainfall(jr.list[index], newDiv);
+
+            createPressure(jr.list[index].main.pressure, newDiv);
+
+            createHumidity(jr.list[index].main.humidity, newDiv)
+
+            createWindSpeed(jr.list[index].wind.speed, newDiv);
+
+            showOption('weather-summary', 'show-summary');
+            showOption('temperature', 'show-temperature');
+            showOption('rain-prediction', 'show-rain');
+            showOption('pressure', 'show-pressure');
+            showOption('humidity', 'show-humidity');
+            showOption('windspeed', 'show-wind');
+        }
+
+        //Display of the 3 hours forecast
+        function showDayDetails(jsonResponse, date, myID) {
+
+            var jr = jsonResponse;
+
+            var myElement = document.getElementById(myID);
+
+            while (myElement.hasChildNodes()) {
+                myElement.removeChild(myElement.lastChild);
+            }
+
+            for (var i = 0; i < jr.list.length; i++) {
+                var unixTimeStamp = jr.list[i].dt;
+                var forecastDate = new Date(unixTimeStamp * 1000);
+
+                if (forecastDate.getDate() == date) {
+                    
+                    //create div
+                    var newDiv = document.createElement('div');
+                    newDiv.id = unixTimeStamp;
+                    newDiv.className = 'forecast-detail';
+                    
+                    //add event listener
+                    newDiv.addEventListener('click', function() {
+                        defineMainWeather(jr, this.id, false);
+                    });
+                    
+                    //display time
+                    var dateDiv = document.createElement('div');
+                    dateDiv.className = "dateText";
+                    dateDiv.innerHTML = forecastDate.getHours() + ".00<br/>";
+                    newDiv.appendChild(dateDiv);
+                    
+                    //display weather summary
+                    createSummary(jr.list[i].weather[0].description, jr.list[i].weather[0].icon, newDiv);
+
+                    myElement.appendChild(newDiv);
+
+                    showOption('weather-summary', 'show-summary');
+
+                }
+            }
+
+            var forecastDetailClass = document.getElementsByClassName('forecast-detail');
+
+            for (var i = 0; i < forecastDetailClass.length; i++) {
+                forecastDetailClass[i].style.width = (100 / (forecastDetailClass.length)) + '%';
+            }
+        }
+
+        //Loads Google Map
+        //Adapted from: //https://developers.google.com/maps/documentation/javascript/tutorial#The_Hello_World_of_Google_Maps_v3
+        //and:
+        //http://stackoverflow.com/questions/11890294/run-javascript-src-only-on-click
+        //and:
+        //http://stackoverflow.com/questions/12500654/uncaught-referenceerror-google-is-not-defined
+        function initialize() {
+            var latlng = new google.maps.LatLng(latitude, longitude);
+            var myOptions = {
+                zoom: 13,
+                center: latlng,
+                mapTypeId: google.maps.MapTypeId.ROADMAP
+            };
+            var map = new google.maps.Map(document.getElementById("map"),
+                myOptions);
+
+        }
+
+        //variables defined outside the function for scoping reasons.
+        var latitude;
+        var longitude;
+        var myicon;
+
+        function loadScript(lat, lon, icon) {
+            var script = document.createElement('script');
+            script.type = 'text/javascript';
+
+            //looks weird but required for scoping reasons
+            latitude = lat;
+            longitude = lon;
+            myicon = icon;
+
+            script.src = "https://maps.googleapis.com/maps/api/js?key=" + YOUR_KEY_HERE + "&sensor=false&callback=initialize";
+            document.body.appendChild(script);
+        }
+
+
+
+        //parse response from OpenWeatherMap
+        function parseJson(response) {
+            var jsonResponse = JSON.parse(response)
+            return jsonResponse;
+        }
+
+
+        //getting input from radio button:
+        //http://stackoverflow.com/questions/9618504/get-radio-button-value-with-javascript
+        function getUnit() {
+            userInput = document.getElementsByName('unit');
+            for (var i = 0, inputLength = userInput.length; i < inputLength; i++) {
+                if (userInput[i].checked) {
+                    return userInput[i].value;
+                }
+            }
+        }
+
+
+        //Set the display of the selected element
+        //adapted from lab 4
+        function setDisplay(div_id, displayStyle) {
+            var panel = document.getElementById(div_id);
+            panel.style.display = displayStyle;
+
+        }
+
+
+
+        //Adapted from:
+        //http://stackoverflow.com/questions/5753680/change-css-of-class-in-javascript
+        function showOption(ClassName, IDName) {
+            myClass = document.getElementsByClassName(ClassName);
+            for (var i = 0, classLen = myClass.length; i < classLen; i++) {
+                if (document.getElementById(IDName).checked) {
+                    myClass[i].style.display = 'block';
+                } else {
+                    myClass[i].style.display = 'none';
+                }
+            }
+
+        }
+
+        //update background color
+        function changeBackgroundColor(objectID) {
+            for (var i = 0; i < document.getElementsByClassName('forecast-main').length; i++) {
+                document.getElementsByClassName('forecast-main')[i].style.backgroundColor = '#558C89';
+                document.getElementsByClassName('forecast-main')[i].style.color = 'white';
+                document.getElementsByClassName('forecast-main')[i].style.border = 'none';
+            }
+            document.getElementById(objectID).style.backgroundColor = '#74AFAD';
+            document.getElementById(objectID).style.color = 'black';
+        }
+
+        //The below functions spawn div to display weather elements
+
+        //Summary
+        function createSummary(summary, icon, divElem) {
+            var summaryDiv = document.createElement('div');
+            summaryDiv.className = 'weather-summary';
+            var iconimg = document.createElement('img');
+            iconimg.src = 'http://openweathermap.org/img/w/' +
+                icon + '.png';
+            iconimg.className = 'icon'
+            summaryDiv.appendChild(iconimg);
+            summaryDiv.innerHTML += '<p>' + summary + "</p>";
+            divElem.appendChild(summaryDiv);
+        }
+
+        //Min temp
+        function createMinTemp(minTemp, divElem) {
+            var minTempDiv = document.createElement('div');
+            minTempDiv.className = 'temperature';
+            minTempDiv.innerHTML = "T min: " + minTemp + displayUnits().degree + "<br/>";
+            divElem.appendChild(minTempDiv);
+        }
+
+        //Max temp
+        function createMaxTemp(maxTemp, divElem) {
+            var maxTempDiv = document.createElement('div');
+            maxTempDiv.className = 'temperature';
+            maxTempDiv.innerHTML = "T max: " + maxTemp + displayUnits().degree + "<br/><br/>";
+            divElem.appendChild(maxTempDiv);
+        }
+
+        //Rainfall
+        function createRainfall(rain, divElem) {
+            var predictedRainfall = document.createElement('div');
+            predictedRainfall.className = 'rain-prediction';
+            predictedRainfall.innerHTML = displayRainVolume(rain);
+            divElem.appendChild(predictedRainfall);
+        }
+
+        //Display of the rain metrics
+        function displayRainVolume(forecast) {
+            if (typeof forecast.rain != 'undefined' && typeof forecast.rain['3h'] != 'undefined') {
+                return 'Rainfall: ' + forecast.rain['3h'] + 'mm<br/><br/>';
+            } else {
+                return 'Rainfall: -<br/><br/>';
+            }
+        }
+
+        //Pressure
+        function createPressure(pressurePred, divElem) {
+            var pressure = document.createElement('div');
+            pressure.className = 'pressure';
+            pressure.innerHTML = "Pressure: " + pressurePred + "hPa<br/></br>";
+            divElem.appendChild(pressure);
+        }
+
+        //Humidity
+        function createHumidity(humidityPred, divElem) {
+            var humidity = document.createElement('div');
+            humidity.className = 'humidity';
+            humidity.innerHTML = "Humidity: " + humidityPred + "%<br/></br>";
+            divElem.appendChild(humidity);
+        }
+
+        //Wind speed
+        function createWindSpeed(windPred, divElem) {
+            var windSpeed = document.createElement('div');
+            windSpeed.className = 'windspeed';
+            windSpeed.innerHTML = "Wind speed: " + windPred + displayUnits().speed + "<br/></br>";
+            divElem.appendChild(windSpeed);
+        }
+
+        //Displays the correct unit
+        function displayUnits() {
+            var metricUnits = {
+                degree: '°C',
+                speed: 'm/s'
+            }
+            var imperialUnits = {
+                degree: '°F',
+                speed: 'mph'
+            }
+
+            switch (getUnit()) {
+                case 'metric':
+                    return metricUnits;
+                case 'imperial':
+                    return imperialUnits;
+            }
+        }
+
+        
+        //error handling
+        
+        //invalid location input (empty or glibberish)
+        window.onerror = function() {
+            alert("Oops! Our weather-forecasting frogs couldn't understand your request. Please try entering a valid location.");
+            location.reload();
+            }
+        
+        //HTTPS warning
+        if (window.location.protocol == "https:"){
+            if (window.confirm("This website does not support the HTTPS protocol. Please switch to HTTP to use our services, and disable your HTTPS redirection extension if you're using one. To learn why, please click 'OK'.")){
+                window.location.href='httpserror.html';
+            }
+        }
+        
+    </script>
+
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_KEY_HERE&libraries=places&sensor=false&callback=initAutocomplete" async defer></script>
+
+</body>
+
+</html>
